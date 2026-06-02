@@ -67,3 +67,58 @@ We evaluate predictive performance by checking how well models trained on the fi
 ### 2. Mathematical Verification
 * **[verify_math.py](verify_math.py)**: Contains a script to manually compute the exact closed-form BG/NBD expected transaction equation (incorporating the **Gauss Hypergeometric Function**, $F(a, b; c; z)$) using `scipy.special.hyp2f1`. 
 * It compares manual evaluations against the `expected_purchases` outputs from `pymc-marketing` for specific customers to verify mathematical logic and sampling code correctness.
+
+---
+
+## Model Parameters and Results
+
+The Bayesian MCMC parameter estimates (posterior means) for the models fit on the complete Indian e-commerce dataset:
+
+### 1. BG/NBD Model Parameters (Transaction & Churn)
+| Parameter | Description | Posterior Mean |
+| :--- | :--- | :--- |
+| $r$ | Transaction shape parameter | 0.277 |
+| $\alpha$ | Transaction scale parameter | 82.826 |
+| $a$ | Churn shape parameter (Beta distribution shape 1) | 133.256 |
+| $b$ | Churn shape parameter (Beta distribution shape 2) | 100.993 |
+
+### 2. Gamma-Gamma Model Parameters (Spend/Monetary Value)
+| Parameter | Description | Posterior Mean |
+| :--- | :--- | :--- |
+| $p$ | Monetary value shape parameter 1 | 2.163 |
+| $q$ | Monetary value shape parameter 2 | 5.605 |
+| $v$ | Monetary value scale parameter | 3798.341 |
+
+### 3. Top Predicted Customers (365-Day CLV Forecasts)
+Top customers sorted by predicted 365-day Customer Lifetime Value (CLV) in `final_clv_predictions.csv`:
+
+| Customer ID | Historical Frequency | Predicted Avg Spend (AOV) | Expected Purchases (90d) | Expected Purchases (365d) | CLV (365d) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **5176** | 3.0 | 3840.51 | 0.31 | 0.51 | 1943.90 |
+| **7701** | 2.0 | 2290.94 | 0.43 | 0.74 | 1698.34 |
+| **5376** | 1.0 | 3052.88 | 0.29 | 0.55 | 1692.33 |
+| **7839** | 2.0 | 2695.32 | 0.28 | 0.58 | 1568.49 |
+| **2939** | 4.0 | 2280.35 | 0.30 | 0.69 | 1566.72 |
+| **9476** | 3.0 | 2075.76 | 0.39 | 0.75 | 1562.14 |
+
+---
+
+## Validation Performance Results
+
+### 1. Empirical Holdout Validation (BG/NBD)
+* **Holdout Horizon**: 109 days (30% temporal split)
+* **Actual Transactions**: 599 total purchases
+* **Predicted Transactions**: 344 total purchases
+* **Overall Forecast Accuracy**: **57.40%**
+* **Calibration Cohort Performance** (Average actual vs. predicted transactions in holdout period based on historical purchases):
+  * **1.0 Historical Purchases**: 0.18 actual vs. 0.10 predicted
+  * **2.0 Historical Purchases**: 0.24 actual vs. 0.16 predicted
+  * **3.0 Historical Purchases**: 0.20 actual vs. 0.24 predicted
+  * **4.0 Historical Purchases**: 0.00 actual vs. 0.31 predicted (Note: small cohort size of only 3 customers who happened not to purchase in the holdout period)
+
+### 2. Mathematical Exactness Verification (`verify_math.py`)
+Tested for Customer `1334` predicting transactions over a 365-day horizon:
+* **Manual Calculation (Gauss Hypergeometric implementation)**: 0.233316
+* **Library output (`pymc-marketing`)**: 0.233316
+* **Absolute Difference**: 0.000000 (Exact match, validating mathematical implementation correctness)
+
