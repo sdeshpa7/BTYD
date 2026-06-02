@@ -32,6 +32,30 @@ Once both models are fitted, CLV for a future horizon t is calculated by combini
 
 `Expected CLV = Expected Transactions * Expected Average Spend`
 
+### 4. Core Mathematical Formulations
+GitHub natively renders mathematical equations in Markdown using standard LaTeX syntax:
+
+#### Probability of Being Alive: P(Alive)
+The probability that a customer with purchase history frequency `x`, recency `tx`, and customer age `T` is still active:
+$$P(\text{Alive} \mid r, \alpha, a, b, x, t_x, T) = \frac{1}{1 + I(x > 0) \frac{a}{b + x - 1} \left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}}$$
+where:
+* `I(x > 0)` is 1 if the customer has repeat transactions (frequency > 0) and 0 otherwise.
+* `r, alpha` are transaction process parameters.
+* `a, b` are dropout process parameters.
+
+#### Expected Transactions: E[Y(t)]
+The expected number of future transactions in a period of length `t` for a customer with history `(x, tx, T)`:
+$$E[Y(t) \mid r, \alpha, a, b, x, t_x, T] = \frac{a + b + x - 1}{a - 1} \frac{1 - \left(\frac{\alpha + T}{\alpha + T + t}\right)^{r + x} \cdot {}_2F_1\left(r + x, b + x; a + b + x - 1; \frac{t}{\alpha + T + t}\right)}{1 + I(x > 0) \frac{a}{b + x - 1} \left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}}$$
+where:
+* `_2F_1` represents the Gauss Hypergeometric Function (implemented using `scipy.special.hyp2f1`).
+
+#### Expected Average Spend: E[M]
+The predicted average spend per transaction for a customer with historical average transaction size `mx` and repeat purchase frequency `x`:
+$$E[M \mid p, q, v, m_x, x] = \frac{p \cdot x \cdot m_x + v}{p \cdot x + q - 1}$$
+where:
+* `p, q, v` are the Gamma-Gamma population parameters.
+* This operates as a Bayesian shrinkage estimator, pulling individual values toward the population mean.
+
 ---
 
 ## Technical Workflow & Project Structure
