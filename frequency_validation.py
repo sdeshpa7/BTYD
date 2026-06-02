@@ -44,9 +44,20 @@ def run_frequency_validation(model_path, test_data_path):
     # Summary Metrics
     total_actual = comparison['actual_transactions'].sum()
     total_predicted = comparison['predicted_transactions'].sum()
+    
+    # Calculate standard metrics
+    mae = np.mean(np.abs(comparison['actual_transactions'] - comparison['predicted_transactions']))
+    rmse = np.sqrt(np.mean((comparison['actual_transactions'] - comparison['predicted_transactions'])**2))
+    
+    # Aggregate Volume Accuracy: 1 - APE
+    ape = abs(total_actual - total_predicted) / total_actual if total_actual > 0 else 0
+    agg_accuracy = max(0, 1 - ape)
+    
     print(f"\nTotal Actual Transactions: {total_actual:.0f}")
     print(f"Total Predicted Transactions: {total_predicted:.0f}")
-    print(f"Overall Accuracy: {min(total_actual, total_predicted) / max(total_actual, total_predicted):.2%}")
+    print(f"Aggregate Volume Accuracy (1 - APE): {agg_accuracy:.2%}")
+    print(f"Individual Customer MAE: {mae:.4f}")
+    print(f"Individual Customer RMSE: {rmse:.4f}")
 
     # 5. Prepare Data for Binned Averages (Calibration Plot)
     calib_plot = pd.merge(comparison, bgm.data[['customer_id', 'frequency']], on='customer_id')

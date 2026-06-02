@@ -146,7 +146,11 @@ Top customers sorted by predicted 365-day Customer Lifetime Value (CLV) in `fina
 * **Holdout Horizon**: 109 days (30% temporal split)
 * **Actual Transactions**: 599 total purchases
 * **Predicted Transactions**: 344 total purchases
-* **Overall Forecast Accuracy**: **57.40%**
+* **Aggregate Volume Accuracy (1 - APE)**: **57.43%** (measures how well the model predicts the total transaction volume for this customer base)
+* **Individual Customer-Level Error**:
+  * **Mean Absolute Error (MAE)**: **0.2588** transactions (average absolute deviation per customer)
+  * **Root Mean Squared Error (RMSE)**: **0.4469** transactions
+  * *Note: Customer-level prediction error is expected to have high variance since individual transaction timings follow a stochastic Poisson process (where most customers complete 0 purchases in a 109-day window).*
 * **Calibration Cohort Performance** (Average actual vs. predicted transactions in holdout period based on historical purchases):
   * **1.0 Historical Purchases**: 0.18 actual vs. 0.10 predicted
   * **2.0 Historical Purchases**: 0.24 actual vs. 0.16 predicted
