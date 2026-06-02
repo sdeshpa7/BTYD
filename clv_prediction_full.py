@@ -45,7 +45,10 @@ def run_full_clv_prediction(data_path):
     freq_90 = bgm.expected_purchases(future_t=90, data=rfm_full).mean(dim=("chain", "draw")).to_series()
     freq_365 = bgm.expected_purchases(future_t=365, data=rfm_full).mean(dim=("chain", "draw")).to_series()
     
-    # B. Expected Average Spend (Monetary)
+    # B. Expected Probability of Being Alive
+    p_alive = bgm.expected_probability_alive(data=rfm_full).mean(dim=("chain", "draw")).to_series()
+    
+    # C. Expected Average Spend (Monetary)
     # Note: For new/one-time customers, we use the population average (model's intercept)
     # expected_customer_spend automatically handles this if we pass the whole rfm_full
     monetary_preds = ggm.expected_customer_spend(data=rfm_full).mean(dim=("chain", "draw")).to_series()
@@ -55,6 +58,7 @@ def run_full_clv_prediction(data_path):
     results['expected_purchases_90d'] = freq_90.values
     results['expected_purchases_365d'] = freq_365.values
     results['expected_avg_spend'] = monetary_preds.values
+    results['p_alive'] = p_alive.values
     
     # CLV Calculation: Frequency * Monetary
     results['clv_90d'] = results['expected_purchases_90d'] * results['expected_avg_spend']

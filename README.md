@@ -16,8 +16,8 @@ The framework consists of two separate models:
 ### 1. BG/NBD Model (Beta-Geometric / Negative Binomial Distribution)
 The BG/NBD model predicts **how many purchases** a customer will make in a future time period and the probability that they are still active ("alive").
 
-* **Transaction Process (NBD)**: While active, a customer's transactions follow a **Poisson process** with a purchase rate (lambda). Across the customer population, these transaction rates follow a **Gamma distribution**.
-* **Dropout Process (Beta-Geometric)**: A customer can drop out (become permanently inactive) immediately after any purchase with a dropout probability (p). Across the customer population, these dropout probabilities follow a **Beta distribution**.
+* **Transaction Process (NBD)**: While active, a customer's transactions follow a **Poisson process** with a purchase rate λ. Across the customer population, these transaction rates follow a **Gamma distribution**.
+* **Dropout Process (Beta-Geometric)**: A customer can drop out (become permanently inactive) immediately after any purchase with a dropout probability p. Across the customer population, these dropout probabilities follow a **Beta distribution**.
 
 ### 2. Gamma-Gamma Model
 The Gamma-Gamma model predicts the **expected average spend per transaction** (Average Order Value / AOV) for each customer.
@@ -34,42 +34,39 @@ Once both models are fitted, CLV for a future horizon t is calculated by combini
 
 ### 4. Core Mathematical Formulations
 
-To make the math easy to read, here are the core formulas represented in a clear, code-friendly format with human-readable variable names:
-
-#### Probability of Being Alive: P(Alive)
-This determines the probability that a customer is still active (has not churned) at their current age since their first purchase:
+#### Probability of Being Active: P(active)
+The probability that a customer with a given transaction frequency, recency, and age is active (alive) at the end of the calibration period:
 
 ```
-P(Alive) = 1 / [ 1 + ChurnIndicator * (a / (b + frequency - 1)) * ((alpha + age) / (alpha + recency))^(r + frequency) ]
+P(active | r, α, a, b, x, tₓ, T) = 1 / [ 1 + δ(x > 0) * (a / (b + x - 1)) * ((α + T) / (α + tₓ))^(r + x) ]
 ```
 where:
-* `ChurnIndicator` = 1 if the customer has repeat purchases (frequency > 0), and 0 otherwise.
-* `frequency` = Number of repeat transactions (total transactions minus one).
-* `recency` = Time in days between the customer's first and last purchase.
-* `age` = Total time in days from the customer's first purchase to the end of the analysis period.
-* `r, alpha, a, b` = BG/NBD model parameters (representing transaction rates and dropout rates).
+* `δ(x > 0)` is an indicator function that equals 1 if the customer has repeat transactions (frequency > 0), and 0 otherwise.
+* `frequency (x)` = number of repeat transactions.
+* `recency (tₓ)` = time in days between the customer's first and last purchase.
+* `age (T)` = total time observed since the customer's first purchase.
+* `r, α, a, b` are the parameters of the BG/NBD model.
 
-#### Expected Transactions: ExpectedTransactions(horizon)
-This predicts the number of purchases a customer will make over a future horizon of `t` days:
-
-```
-ExpectedTransactions(horizon) = [ (a + b + frequency - 1) / (a - 1) ] * [ 1 - ((alpha + age) / (alpha + age + horizon))^(r + frequency) * GaussHypergeometric ] / [ 1 + ChurnIndicator * (a / (b + frequency - 1)) * ((alpha + age) / (alpha + recency))^(r + frequency) ]
-```
-where:
-* `GaussHypergeometric` = The Gauss Hypergeometric function, evaluated as:
-  `GaussHypergeometric = F(r + frequency, b + frequency; a + b + frequency - 1; horizon / (alpha + age + horizon))`
-* `horizon` = Number of days in the future to forecast (e.g., 90 or 365 days).
-
-#### Expected Average Spend: ExpectedAverageSpend
-This predicts the long-term average transaction value (Average Order Value / AOV) for a customer:
+#### Expected Transactions: E[Y(t)]
+The expected number of future transactions over a future time horizon `t` for a customer with history `(x, tₓ, T)`:
 
 ```
-ExpectedAverageSpend = (p * frequency * historical_average_spend + v) / (p * frequency + q - 1)
+E[Y(t) | r, α, a, b, x, tₓ, T] = [ (a + b + x - 1) / (a - 1) ] * [ 1 - ((α + T) / (α + T + t))^(r + x) * F(r + x, b + x; a + b + x - 1; t / (α + T + t)) ] / [ 1 + δ(x > 0) * (a / (b + x - 1)) * ((α + T) / (α + tₓ))^(r + x) ]
 ```
 where:
-* `historical_average_spend` = The customer's actual average transaction size during the training period.
-* `p, q, v` = Gamma-Gamma model parameters (population-wide parameters for transaction spend).
-* This works as a weighted average that shrinks a customer's individual historical average spend toward the overall population average to prevent overfitting.
+* `F` represents the Gauss Hypergeometric Function (implemented via `scipy.special.hyp2f1`).
+* `t` = future time horizon.
+
+#### Expected Average Spend: E(M)
+The expected transaction size (monetary value) for a customer with a given historical average transaction size and transaction frequency:
+
+```
+E(M | p, q, v, mₓ, x) = (p * x * mₓ + v) / (p * x + q - 1)
+```
+where:
+* `mₓ` = observed historical average spend.
+* `p, q, v` are the parameters of the Gamma-Gamma model.
+* This operates as a Bayesian shrinkage estimator, pulling individual values toward the population mean.
 
 ---
 
@@ -132,14 +129,14 @@ The Bayesian MCMC parameter estimates (posterior means) for the models fit on th
 ### 3. Top Predicted Customers (365-Day CLV Forecasts)
 Top customers sorted by predicted 365-day Customer Lifetime Value (CLV) in `final_clv_predictions.csv`:
 
-| Customer ID | Historical Frequency | Predicted Avg Spend (AOV) | Expected Purchases (90d) | Expected Purchases (365d) | CLV (365d) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **5176** | 3.0 | 3840.51 | 0.31 | 0.51 | 1943.90 |
-| **7701** | 2.0 | 2290.94 | 0.43 | 0.74 | 1698.34 |
-| **5376** | 1.0 | 3052.88 | 0.29 | 0.55 | 1692.33 |
-| **7839** | 2.0 | 2695.32 | 0.28 | 0.58 | 1568.49 |
-| **2939** | 4.0 | 2280.35 | 0.30 | 0.69 | 1566.72 |
-| **9476** | 3.0 | 2075.76 | 0.39 | 0.75 | 1562.14 |
+| Customer ID | Historical Frequency | Predicted Avg Spend (AOV) | Expected Purchases (90d) | Expected Purchases (365d) | P(alive) | CLV (365d) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **5176** | 3.0 | 3840.51 | 0.31 | 0.51 | 27.66% | 1943.90 |
+| **7701** | 2.0 | 2290.94 | 0.43 | 0.74 | 44.29% | 1698.34 |
+| **5376** | 1.0 | 3052.88 | 0.29 | 0.55 | 39.64% | 1692.33 |
+| **7839** | 2.0 | 2695.32 | 0.28 | 0.58 | 38.87% | 1568.49 |
+| **2939** | 4.0 | 2280.35 | 0.30 | 0.69 | 44.34% | 1566.72 |
+| **9476** | 3.0 | 2075.76 | 0.39 | 0.75 | 44.50% | 1562.14 |
 
 ---
 
