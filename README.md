@@ -33,28 +33,43 @@ Once both models are fitted, CLV for a future horizon t is calculated by combini
 `Expected CLV = Expected Transactions * Expected Average Spend`
 
 ### 4. Core Mathematical Formulations
-GitHub natively renders mathematical equations in Markdown using standard LaTeX syntax:
+
+To make the math easy to read, here are the core formulas represented in a clear, code-friendly format with human-readable variable names:
 
 #### Probability of Being Alive: P(Alive)
-The probability that a customer with purchase history frequency `x`, recency `tx`, and customer age `T` is still active:
-$$P(\text{Alive} \mid r, \alpha, a, b, x, t_x, T) = \frac{1}{1 + I(x > 0) \frac{a}{b + x - 1} \left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}}$$
-where:
-* `I(x > 0)` is 1 if the customer has repeat transactions (frequency > 0) and 0 otherwise.
-* `r, alpha` are transaction process parameters.
-* `a, b` are dropout process parameters.
+This determines the probability that a customer is still active (has not churned) at their current age since their first purchase:
 
-#### Expected Transactions: E[Y(t)]
-The expected number of future transactions in a period of length `t` for a customer with history `(x, tx, T)`:
-$$E[Y(t) \mid r, \alpha, a, b, x, t_x, T] = \frac{a + b + x - 1}{a - 1} \frac{1 - \left(\frac{\alpha + T}{\alpha + T + t}\right)^{r + x} \cdot {}_2F_1\left(r + x, b + x; a + b + x - 1; \frac{t}{\alpha + T + t}\right)}{1 + I(x > 0) \frac{a}{b + x - 1} \left(\frac{\alpha + T}{\alpha + t_x}\right)^{r + x}}$$
+```
+P(Alive) = 1 / [ 1 + ChurnIndicator * (a / (b + frequency - 1)) * ((alpha + age) / (alpha + recency))^(r + frequency) ]
+```
 where:
-* `_2F_1` represents the Gauss Hypergeometric Function (implemented using `scipy.special.hyp2f1`).
+* `ChurnIndicator` = 1 if the customer has repeat purchases (frequency > 0), and 0 otherwise.
+* `frequency` = Number of repeat transactions (total transactions minus one).
+* `recency` = Time in days between the customer's first and last purchase.
+* `age` = Total time in days from the customer's first purchase to the end of the analysis period.
+* `r, alpha, a, b` = BG/NBD model parameters (representing transaction rates and dropout rates).
 
-#### Expected Average Spend: E[M]
-The predicted average spend per transaction for a customer with historical average transaction size `mx` and repeat purchase frequency `x`:
-$$E[M \mid p, q, v, m_x, x] = \frac{p \cdot x \cdot m_x + v}{p \cdot x + q - 1}$$
+#### Expected Transactions: ExpectedTransactions(horizon)
+This predicts the number of purchases a customer will make over a future horizon of `t` days:
+
+```
+ExpectedTransactions(horizon) = [ (a + b + frequency - 1) / (a - 1) ] * [ 1 - ((alpha + age) / (alpha + age + horizon))^(r + frequency) * GaussHypergeometric ] / [ 1 + ChurnIndicator * (a / (b + frequency - 1)) * ((alpha + age) / (alpha + recency))^(r + frequency) ]
+```
 where:
-* `p, q, v` are the Gamma-Gamma population parameters.
-* This operates as a Bayesian shrinkage estimator, pulling individual values toward the population mean.
+* `GaussHypergeometric` = The Gauss Hypergeometric function, evaluated as:
+  `GaussHypergeometric = F(r + frequency, b + frequency; a + b + frequency - 1; horizon / (alpha + age + horizon))`
+* `horizon` = Number of days in the future to forecast (e.g., 90 or 365 days).
+
+#### Expected Average Spend: ExpectedAverageSpend
+This predicts the long-term average transaction value (Average Order Value / AOV) for a customer:
+
+```
+ExpectedAverageSpend = (p * frequency * historical_average_spend + v) / (p * frequency + q - 1)
+```
+where:
+* `historical_average_spend` = The customer's actual average transaction size during the training period.
+* `p, q, v` = Gamma-Gamma model parameters (population-wide parameters for transaction spend).
+* This works as a weighted average that shrinks a customer's individual historical average spend toward the overall population average to prevent overfitting.
 
 ---
 
