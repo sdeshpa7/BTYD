@@ -105,6 +105,12 @@ We evaluate predictive performance by checking how well models trained on the fi
 * **[verify_math.py](verify_math.py)**: Contains a script to manually compute the exact closed-form BG/NBD expected transaction equation (incorporating the **Gauss Hypergeometric Function** F(a, b; c; z)) using `scipy.special.hyp2f1`. 
 * It compares manual evaluations against the `expected_purchases` outputs from `pymc-marketing` for specific customers to verify mathematical logic and sampling code correctness.
 
+### 3. Validation Methodology in Marketing Literature
+In customer-base analysis literature (e.g., Fader, Hardie & Lee 2005), traditional classification accuracy is considered an inappropriate metric for stochastic transaction models. Instead, the literature establishes three validation protocols:
+* **Cohort-Level Calibration (Fit Distribution)**: Customers are grouped by their transaction frequency in the calibration period, and the average number of actual holdout transactions for each cohort is compared to the model's conditional expected transactions. This tests if the model scales correctly across different segments of buyer activity (this visual fit is plotted in our calibration tracking plots).
+* **Aggregate Volume Match**: Measures the total expected transaction volume against actual total purchases over the holdout window to assess the model's aggregate bias for business forecasting.
+* **Continuous Error Metrics (MAE / RMSE)**: Rather than matching integer transaction counts (which have high variance due to the random Poisson arrival times of purchases), predictions are evaluated as continuous expectations using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) to capture probabilistic distance.
+
 ---
 
 ## Model Parameters and Results
