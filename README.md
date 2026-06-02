@@ -16,8 +16,8 @@ The framework consists of two separate models:
 ### 1. BG/NBD Model (Beta-Geometric / Negative Binomial Distribution)
 The BG/NBD model predicts **how many purchases** a customer will make in a future time period and the probability that they are still active ("alive").
 
-* **Transaction Process (NBD)**: While active, a customer's transactions follow a **Poisson process** with a purchase rate $\lambda$. Across the customer population, these transaction rates follow a **Gamma distribution**.
-* **Dropout Process (Beta-Geometric)**: A customer can drop out (become permanently inactive) immediately after any purchase with a dropout probability $p$. Across the customer population, these dropout probabilities follow a **Beta distribution**.
+* **Transaction Process (NBD)**: While active, a customer's transactions follow a **Poisson process** with a purchase rate (lambda). Across the customer population, these transaction rates follow a **Gamma distribution**.
+* **Dropout Process (Beta-Geometric)**: A customer can drop out (become permanently inactive) immediately after any purchase with a dropout probability (p). Across the customer population, these dropout probabilities follow a **Beta distribution**.
 
 ### 2. Gamma-Gamma Model
 The Gamma-Gamma model predicts the **expected average spend per transaction** (Average Order Value / AOV) for each customer.
@@ -28,8 +28,9 @@ The Gamma-Gamma model predicts the **expected average spend per transaction** (A
   * **Independence Assumption**: The monetary value of transactions is assumed to be independent of transaction frequency. We verify this assumption by checking the correlation between frequency and average spend (correlation should be near 0).
 
 ### 3. Customer Lifetime Value (CLV) Calculation
-Once both models are fitted, CLV for a future horizon $t$ is calculated by combining their outputs:
-$$\text{Expected CLV}_t = \text{Expected Transactions}_t \times \text{Expected Average Spend}$$
+Once both models are fitted, CLV for a future horizon t is calculated by combining their outputs:
+
+`Expected CLV = Expected Transactions * Expected Average Spend`
 
 ---
 
@@ -39,7 +40,7 @@ The project code is divided into the following data science scripts:
 
 * **[exploration.py](exploration.py)**: Loads raw transaction data, aggregates logs into RFM (Recency, Frequency, Age) statistics, validates assumptions, and splits the data chronologically into a **70% training (calibration)** and **30% validation (holdout)** split.
 * **[btyd.py](btyd.py)**: Fits the BG/NBD frequency model on the training subset using PyMC Marketing. Saves the fitted model parameter trace to `bgm_model.nc`.
-* **[bg_nbd_analysis.py](bg_nbd_analysis.py)**: Performs diagnostics and generates plots using the fitted BG/NBD model. Includes a masked Probability Alive matrix (excluding one-time buyers) and a real-time "jumping" probability alive plot over a customer's purchase timeline (tracking how $P(Alive)$ decays between transactions and jumps back up immediately at transaction events).
+* **[bg_nbd_analysis.py](bg_nbd_analysis.py)**: Performs diagnostics and generates plots using the fitted BG/NBD model. Includes a masked Probability Alive matrix (excluding one-time buyers) and a real-time "jumping" probability alive plot over a customer's purchase timeline (tracking how P(Alive) decays between transactions and jumps back up immediately at transaction events).
 * **[fit_btyd_model.py](fit_btyd_model.py)**: A helper script that fits both BG/NBD and Gamma-Gamma models in one go on repeat customers (frequency >= 2), scales monetary values by 100 for convergence stability, calculates 10/30/60-day expected CLV, and outputs a combined report to `rfm_with_predictions.csv` alongside model heatmaps.
 * **[gamma-gamma.py](gamma-gamma.py)**: Fits the Gamma-Gamma monetary model on training data. Implements informative `HalfNormal` priors to ensure convergence and prevent parameter scaling issues. Saves the model trace to `ggm_model.nc`.
 * **[gg-analysis.py](gg-analysis.py)**: Performs diagnostics and trace plots for the Gamma-Gamma monetary model fit results.
@@ -65,7 +66,7 @@ We evaluate predictive performance by checking how well models trained on the fi
   * We compare predicted average spend against actual average spend in the test set.
 
 ### 2. Mathematical Verification
-* **[verify_math.py](verify_math.py)**: Contains a script to manually compute the exact closed-form BG/NBD expected transaction equation (incorporating the **Gauss Hypergeometric Function**, $F(a, b; c; z)$) using `scipy.special.hyp2f1`. 
+* **[verify_math.py](verify_math.py)**: Contains a script to manually compute the exact closed-form BG/NBD expected transaction equation (incorporating the **Gauss Hypergeometric Function** F(a, b; c; z)) using `scipy.special.hyp2f1`. 
 * It compares manual evaluations against the `expected_purchases` outputs from `pymc-marketing` for specific customers to verify mathematical logic and sampling code correctness.
 
 ---
@@ -77,17 +78,17 @@ The Bayesian MCMC parameter estimates (posterior means) for the models fit on th
 ### 1. BG/NBD Model Parameters (Transaction & Churn)
 | Parameter | Description | Posterior Mean |
 | :--- | :--- | :--- |
-| $r$ | Transaction shape parameter | 0.277 |
-| $\alpha$ | Transaction scale parameter | 82.826 |
-| $a$ | Churn shape parameter (Beta distribution shape 1) | 133.256 |
-| $b$ | Churn shape parameter (Beta distribution shape 2) | 100.993 |
+| r | Transaction shape parameter | 0.277 |
+| alpha | Transaction scale parameter | 82.826 |
+| a | Churn shape parameter (Beta distribution shape 1) | 133.256 |
+| b | Churn shape parameter (Beta distribution shape 2) | 100.993 |
 
 ### 2. Gamma-Gamma Model Parameters (Spend/Monetary Value)
 | Parameter | Description | Posterior Mean |
 | :--- | :--- | :--- |
-| $p$ | Monetary value shape parameter 1 | 2.163 |
-| $q$ | Monetary value shape parameter 2 | 5.605 |
-| $v$ | Monetary value scale parameter | 3798.341 |
+| p | Monetary value shape parameter 1 | 2.163 |
+| q | Monetary value shape parameter 2 | 5.605 |
+| v | Monetary value scale parameter | 3798.341 |
 
 ### 3. Top Predicted Customers (365-Day CLV Forecasts)
 Top customers sorted by predicted 365-day Customer Lifetime Value (CLV) in `final_clv_predictions.csv`:
