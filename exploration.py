@@ -26,32 +26,6 @@ def aggregate_by_time(data, order_id,customer_id,
     return df
     
 
-def create_RFM_Table(data,order_id,customer_id,timestamp,monetary_value,granularity):
-    
-    max_date=data[timestamp].max()
-    latest_order_date = pd.DataFrame(data.groupby([customer_id])[timestamp].max())
-    latest_order_date.rename(columns = {timestamp:'Most Recent Order Date'}, inplace = True)
-    latest_order_date["customer_unique_id"]=latest_order_date.index
-
-    earliest_order_date=pd.DataFrame(data.groupby([customer_id])[timestamp].min())
-    earliest_order_date.rename(columns = {timestamp:'Earliest Order Date'}, inplace = True)
-    earliest_order_date["Age"]=(max_date-earliest_order_date["Earliest Order Date"]).dt.round("d")
-    earliest_order_date['Age In Days'] = earliest_order_date['Age'] / pd.to_timedelta(1, unit='D')
-    earliest_order_date.drop(['Age'], axis=1, inplace=True)    
-    earliest_order_date["customer_unique_id"]=earliest_order_date.index
-
-    recency_df=pd.merge(latest_order_date[["Most Recent Order Date"]],
-                            earliest_order_date[["Earliest Order Date","Age In Days"]],
-                            left_index=True, right_index=True)
-
-    recency_df["recency"]=recency_df["Most Recent Order Date"]-recency_df["Earliest Order Date"]
-
-    recency_df["recency"]=recency_df["recency"].dt.round("d")
-    recency_df.rename(columns = {"recency":"Recency In Days"}, inplace = True)
-    recency_df['Recency In Days'] = recency_df['Recency In Days'] / pd.to_timedelta(1, unit='D')
-    recency_df[customer_id]=recency_df.index
-    recency_df.reset_index(inplace = True, drop = True)
-
 
 def fit_models(file_path):
     # 1. Load and Preprocess Data
